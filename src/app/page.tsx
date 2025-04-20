@@ -1,34 +1,31 @@
-import TaskForm from "@/components/task-form";
-import ChatUI from "@/components/chat-ui";
-import TaskTable from "@/components/task-table";
-import NoticeBox from "@/components/notice-box";
-import CalendarEvent from "@/components/calendar-event";
-import TaskNoteWidget from "@/components/task-note-widget";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card } from "@/components/ui/card";
-import { Toaster } from "sonner";
+import TaskForm from "@/components/task-form"
+import ChatUI from "@/components/chat-ui"
+import TaskTable from "@/components/task-table"
+import NoticeBox from "@/components/notice-box"
+import CalendarEvent from "@/components/calendar-event"
+import TaskNoteWidget from "@/components/task-note-widget"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Card } from "@/components/ui/card"
+import { Toaster } from "sonner"
 
 export default function Home() {
   return (
     <div className="flex flex-col space-y-4">
-      {/* Main grid layout to match the image */}
       <div className="grid grid-cols-3 gap-4">
-        {/* First row - 3 equal columns */}
-        <Card className="p-3 aspect-square">
-          <h2 className="text-lg font-medium mb-2">System Notices</h2>
+        <Card className="p-3  font-nerd">
+          <h2 className="text-md  tracking-tight">System Updates</h2>
           <NoticeBox />
         </Card>
 
-        <div className="aspect-square">
-          <ChatUI />
-        </div>
-
-        <div className="row-span-2 p-0 space-y-4 ">
-          <CalendarEvent />
+        <div className=" font-nerd">
           <TaskNoteWidget />
         </div>
 
-        {/* Second row - Task Form (spans 2 cols) and Task Note Widget (1 col) */}
+        <div className="row-span-2 p-0 space-y-4 font-nerd">
+          <CalendarEvent />
+          <ChatUI />
+        </div>
+
         <Card className="col-span-2 p-3">
           <h2 className="text-lg font-medium mb-2">Task Entry Form</h2>
           <TaskForm />
@@ -61,5 +58,5 @@ export default function Home() {
       {/* Toast notifications */}
       <Toaster position="bottom-right" />
     </div>
-  );
+  )
 }

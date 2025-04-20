@@ -70,9 +70,9 @@ export default function TaskNoteWidget() {
   };
 
   return (
-    <Card className="w-full  max-w-md mx-auto">
+    <Card className="w-full  max-w-md mx-auto pt-2.5">
       <CardHeader>
-        <CardTitle>Task Notes</CardTitle>
+        <CardTitle className="text-md font-medium ">Task Notes</CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleAddTask} className="flex space-x-2 mb-4">
