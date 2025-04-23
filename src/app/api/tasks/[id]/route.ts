@@ -1,40 +1,80 @@
-import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/db';
+import { NextRequest } from "next/server";
+import prisma from "@/lib/db";
+import { revalidatePath } from "next/cache";
+
+export const dynamic = 'force-dynamic';
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const taskId = params.id;
     const body = await request.json();
-
-    // Validate task exists
-    const existingTask = await prisma.task.findUnique({
+    const taskId = await (await params).id;
+    
+    const task = await prisma.task.update({
       where: { id: taskId },
+      data: body,
     });
 
-    if (!existingTask) {
-      return NextResponse.json({ error: 'Task not found' }, { status: 404 });
-    }
-
-    // Update the task
-    const updatedTask = await prisma.task.update({
-      where: { id: taskId },
-      data: {
-        status: body.status,
-        ...(body.solutionProvided !== undefined && { solutionProvided: body.solutionProvided }),
-        ...(body.remarks !== undefined && { remarks: body.remarks }),
-        ...(body.assignedToId !== undefined && { assignedToId: body.assignedToId }),
-      },
-      include: {
-        assignedTo: true,
+    // Revalidate all necessary paths
+    revalidatePath("/dashboard");
+    revalidatePath("/");
+    
+    return new Response(JSON.stringify(task), {
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
       },
     });
-
-    return NextResponse.json({ task: updatedTask }, { status: 200 });
   } catch (error) {
-    console.error('Error updating task:', error);
-    return NextResponse.json({ error: 'Failed to update task' }, { status: 500 });
+    console.error("Error updating task:", error);
+    return new Response(
+      JSON.stringify({ message: "Error updating task" }),
+      { 
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-store',
+        }
+      }
+    );
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    // Await params before accessing id property
+    const taskId = await (await params).id;
+    
+    await prisma.task.delete({
+      where: { id: taskId },
+    });
+
+    // Revalidate all necessary paths
+    revalidatePath("/dashboard");
+    revalidatePath("/");
+    
+    return new Response(JSON.stringify({ message: "Task deleted successfully" }), {
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store',
+      },
+    });
+  } catch (error) {
+    console.error("Error deleting task:", error);
+    return new Response(
+      JSON.stringify({ message: "Error deleting task" }),
+      { 
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-store',
+        }
+      }
+    );
   }
 }

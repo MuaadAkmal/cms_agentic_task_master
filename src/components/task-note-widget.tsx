@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   addTask,
   deleteTask,
@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, Trash } from "lucide-react";
 import { toast } from "sonner";
+import { useState } from "react";
 
 interface TaskNote {
   id: string;
@@ -22,57 +23,67 @@ interface TaskNote {
 }
 
 export default function TaskNoteWidget() {
-  const [tasks, setTasks] = useState<TaskNote[]>([]);
   const [newTask, setNewTask] = useState("");
-  const [isPending, startTransition] = useTransition();
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    fetchTasks();
-  }, []);
+  const { data, isLoading } = useQuery({
+    queryKey: ["tasks"],
+    queryFn: getTasks,
+  });
 
-  const fetchTasks = async () => {
-    const fetchedTasks = await getTasks();
+  const tasks: TaskNote[] = Array.isArray(data) ? data : [];
 
-    // do error check here both error and success has message property
-    if (fetchedTasks instanceof Array) {
-      setTasks(fetchedTasks);
-      return;
-    } else {
-      toast.error(fetchedTasks.message);
-    }
-  };
+  const addTaskMutation = useMutation({
+    mutationFn: addTask,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      setNewTask("");
+      toast.success("Your new task has been added successfully");
+    },
+    onError: () => {
+      toast.error("Failed to add task");
+    },
+  });
+
+  const toggleTaskMutation = useMutation({
+    mutationFn: toggleTask,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+    },
+    onError: () => {
+      toast.error("Failed to update task");
+    },
+  });
+
+  const deleteTaskMutation = useMutation({
+    mutationFn: deleteTask,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      toast.success("Task deleted successfully");
+    },
+    onError: () => {
+      toast.error("Failed to delete task");
+    },
+  });
 
   const handleAddTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTask.trim()) return;
-
-    startTransition(async () => {
-      await addTask(newTask);
-      setNewTask("");
-      await fetchTasks();
-      toast.success("Your new task has been added successfully");
-    });
+    addTaskMutation.mutate(newTask);
   };
 
-  const handleToggleTask = async (id: string) => {
-    startTransition(async () => {
-      await toggleTask(id);
-      await fetchTasks();
-    });
+  const handleToggleTask = (id: string) => {
+    toggleTaskMutation.mutate(id);
   };
 
-  const handleDeleteTask = async (id: string) => {
-    startTransition(async () => {
-      await deleteTask(id);
-      await fetchTasks();
-      toast.success("Task deleted successfully");
-    });
+  const handleDeleteTask = (id: string) => {
+    deleteTaskMutation.mutate(id);
   };
 
   return (
-    <Card className="w-full  max-w-md mx-auto pt-2.5">
+    <Card className="w-full max-w-md mx-auto pt-2.5">
       <CardHeader>
-        <CardTitle className="text-md font-medium ">Task Notes</CardTitle>
+        <CardTitle className="text-md font-medium">Task Notes</CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleAddTask} className="flex space-x-2 mb-4">
@@ -83,36 +94,47 @@ export default function TaskNoteWidget() {
             placeholder="Add a new task..."
             className="flex-grow"
           />
-          <Button type="submit" disabled={isPending}>
-            {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add"}
+          <Button type="submit" disabled={addTaskMutation.isPending}>
+            {addTaskMutation.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              "Add"
+            )}
           </Button>
         </form>
-        <ul className="space-y-2">
-          {tasks.map((task) => (
-            <li key={task.id} className="flex items-center space-x-2">
-              <Checkbox
-                id={task.id}
-                checked={task.checked}
-                onCheckedChange={() => handleToggleTask(task.id)}
-              />
-              <label
-                htmlFor={task.id}
-                className={`flex-grow ${
-                  task.checked ? "line-through text-gray-500" : ""
-                }`}
-              >
-                {task.message}
-              </label>
-              <button
-                onClick={() => handleDeleteTask(task.id)}
-                className="text-black-500 hover:text-red-700"
-                disabled={isPending}
-              >
-                <Trash className="h-4 w-4" />
-              </button>
-            </li>
-          ))}
-        </ul>
+        {isLoading ? (
+          <div className="flex justify-center">
+            <Loader2 className="h-6 w-6 animate-spin" />
+          </div>
+        ) : (
+          <ul className="space-y-2">
+            {tasks.map((task: TaskNote) => (
+              <li key={task.id} className="flex items-center space-x-2">
+                <Checkbox
+                  id={task.id}
+                  checked={task.checked}
+                  onCheckedChange={() => handleToggleTask(task.id)}
+                  disabled={toggleTaskMutation.isPending}
+                />
+                <label
+                  htmlFor={task.id}
+                  className={`flex-grow ${
+                    task.checked ? "line-through text-gray-500" : ""
+                  }`}
+                >
+                  {task.message}
+                </label>
+                <button
+                  onClick={() => handleDeleteTask(task.id)}
+                  className="text-black-500 hover:text-red-700"
+                  disabled={deleteTaskMutation.isPending}
+                >
+                  <Trash className="h-4 w-4" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </CardContent>
     </Card>
   );

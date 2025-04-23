@@ -1,24 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/db';
+import { PrismaClient } from '@prisma/client';
 
-export async function GET(request: NextRequest) {
+const prisma = new PrismaClient();
+
+export async function GET() {
   try {
-    // Get all users (in a real app, you'd add pagination and filtering)
     const users = await prisma.user.findMany({
       select: {
         id: true,
         name: true,
         email: true,
+        avatar: true,
         role: true,
         createdAt: true,
-        // Exclude sensitive information
       },
     });
 
     return NextResponse.json({ users }, { status: 200 });
   } catch (error) {
-    console.error('Error fetching users:', error);
-    return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 });
+    console.error('Failed to fetch users:', error);
+    return new NextResponse('Error fetching users', { status: 500 });
   }
 }
 

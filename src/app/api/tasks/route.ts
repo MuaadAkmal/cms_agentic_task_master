@@ -1,69 +1,90 @@
-import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/db';
+import { NextRequest, NextResponse } from "next/server";
+import prisma from "@/lib/db";
+import { revalidatePath } from "next/cache";
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export async function GET(request: NextRequest) {
   try {
-    // Get query parameters for filtering
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
     const search = searchParams.get('search');
+    const from = searchParams.get('from');
+    const to = searchParams.get('to');
 
-    // Build the query filter
-    const filter: any = {};
+    const where: {
+      status?: string;
+      OR?: Array<{ problemDescription?: { contains: string }; solutionProvided?: { contains: string }; remarks?: { contains: string } }>;
+      createdAt?: { gte?: Date; lte?: Date };
+    } = {};
+
     if (status && status !== 'all') {
-      filter.status = status.charAt(0).toUpperCase() + status.slice(1);
+      where.status = status;
     }
 
-    // Add search functionality
     if (search) {
-      filter.OR = [
+      where.OR = [
         { problemDescription: { contains: search } },
         { solutionProvided: { contains: search } },
+        { remarks: { contains: search } },
       ];
     }
 
-    // Fetch tasks from the database
+    if (from || to) {
+      where.createdAt = {
+        ...(from && { gte: new Date(from) }),
+        ...(to && { lte: new Date(to) }),
+      };
+    }
+
     const tasks = await prisma.task.findMany({
-      where: filter,
-      include: {
-        assignedTo: true,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-      // If no search, limit to latest 6 tasks
-      ...(search ? {} : { take: 6 }),
+      where,
+      orderBy: { createdAt: 'desc' },
     });
 
-    return NextResponse.json({ tasks }, { status: 200 });
+    return new NextResponse(JSON.stringify(tasks), {
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      },
+    });
   } catch (error) {
     console.error('Error fetching tasks:', error);
-    return NextResponse.json({ error: 'Failed to fetch tasks' }, { status: 500 });
+    return new NextResponse(JSON.stringify({ error: 'Failed to fetch tasks' }), { 
+      status: 500,
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store',
+      },
+    });
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-
-    // Create a new task
     const task = await prisma.task.create({
       data: {
         lsa: body.lsa,
         tsp: body.tsp,
         dotAndLea: body.dotAndLea,
         problemDescription: body.problemDescription,
-        status: body.status || 'Pending',
-        solutionProvided: body.solutionProvided,
-        remarks: body.remarks,
-        // If there's an assignedToId in the request, assign the task
-        ...(body.assignedToId && { assignedToId: body.assignedToId }),
+        status: body.status,
       },
     });
 
-    return NextResponse.json({ task }, { status: 201 });
+    // Ensure immediate revalidation
+    revalidatePath("/dashboard");
+    revalidatePath("/");
+    
+    return NextResponse.json({ task, success: true }, { status: 201 });
   } catch (error) {
-    console.error('Error creating task:', error);
-    return NextResponse.json({ error: 'Failed to create task' }, { status: 500 });
+    console.error("Error creating task:", error);
+    return NextResponse.json({ error: "Failed to create task" }, { status: 500 });
   }
 }
+
+

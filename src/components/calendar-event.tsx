@@ -6,12 +6,6 @@ import { Button } from "@/components/ui/button";
 import { useMemo, useState } from "react";
 import { events, TEvent } from "@/lib/constants";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "./ui/tooltip";
 
 const isOfficialLeave = (date: Date) => {
   const dayAfterDate = new Date(date);
@@ -156,7 +150,10 @@ export default function CalendarEvent() {
                   <p className="text-sm font-medium">Upcoming Event:</p>
                   <p className="text-sm flex gap-x-1">
                     <span className="text-sm">
-                    {new Date(event.date).toLocaleDateString(undefined, { month: "long", day: "numeric" }) + " :"}
+                      {new Date(event.date).toLocaleDateString(undefined, {
+                        month: "long",
+                        day: "numeric",
+                      }) + " :"}
                     </span>
                     <span>
                       {event.values.map((value, index) => (

@@ -25,6 +25,7 @@ export async function addTask(message: string) {
         checked: false,
       },
     });
+    revalidatePath("/dashboard");
     revalidatePath("/");
     return { message: "Task added successfully" };
   } catch (error) {
@@ -49,6 +50,7 @@ export async function toggleTask(id: string) {
         checked: !task.checked,
       },
     });
+    revalidatePath("/dashboard");
     revalidatePath("/");
     return { message: "Task updated successfully" };
   } catch (error) {
@@ -62,6 +64,7 @@ export async function deleteTask(id: string) {
     await prisma.taskNote.delete({
       where: { id },
     });
+    revalidatePath("/dashboard");
     revalidatePath("/");
     return { message: "Task deleted successfully" };
   } catch (error) {
